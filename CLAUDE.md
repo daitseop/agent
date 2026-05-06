@@ -72,8 +72,9 @@ dais_agent/
 │           └── dashboards/
 │
 ├── ml/                          # MLflow 학습/배포 예시
-│   ├── train/                   # 학습 스크립트
-│   ├── serve/                   # 모델 서빙 (mlflow models serve)
+│   ├── train/                   # 학습 스크립트 (train.py)
+│   ├── inference/               # 배치 추론 스크립트 (predict.py)
+│   ├── serve/                   # 모델 서빙 가이드 (별도 컨테이너 X)
 │   └── notebooks/               # 실험용 (선택)
 │
 ├── agents/                      # Agent 코드 (현재 단계에선 골격만)
@@ -167,7 +168,7 @@ dais_agent/
 
 ---
 
-### Phase 2: MLOps 인프라 구축 🟡 코드 작성 완료 / 사용자 환경 검증 필요
+### Phase 2: MLOps 인프라 구축 ✅ 완료 (2026-05-06 사용자 검증 완료)
 
 **목표**: `make up` 한 번으로 모든 서비스가 뜨고, 각 UI 접속이 가능하다.
 
@@ -192,8 +193,8 @@ dais_agent/
   - `airflow_logs` → `/opt/airflow/logs` ✅
   - `prometheus_data` → `/prometheus` ✅
   - `grafana_data` → `/var/lib/grafana` ✅
-- [ ] **(사용자 검증)** `make up` 으로 전체 기동 확인
-- [ ] **(사용자 검증)** 접속 확인: MLflow(5000), Airflow(8080), Grafana(3000), MinIO Console(9001)
+- [x] **(사용자 검증)** `make up` 으로 전체 기동 확인
+- [x] **(사용자 검증)** 접속 확인: MLflow(5000), Airflow(8080), Grafana(3000), MinIO Console(9001)
 
 **검증 절차** (사용자 환경에서):
 ```bash
@@ -209,21 +210,29 @@ make ps                      # 모든 서비스 healthy 확인
 
 ---
 
-### Phase 3: MLflow 학습 → 배포 워크플로
+### Phase 3: MLflow 학습 → 배포 워크플로 🟡 코드 작성 완료 / 사용자 검증 필요
 
 **목표**: 실제 모델을 학습→등록→배포(서빙)하는 흐름을 파이프라인으로 만든다.
 
-- [ ] `ml/train/` — 간단한 학습 스크립트 (sklearn 등)
-  - MLflow Tracking 으로 metric/param/model 기록
-  - Model Registry에 등록 (`mlflow.register_model`)
-- [ ] `ml/serve/` — 등록된 모델을 서빙
-  - `mlflow models serve` 또는 FastAPI 래퍼
-  - 컨테이너화 여부 결정 (이 단계에서)
-- [ ] `infra/airflow/dags/train_pipeline.py` — Airflow DAG
-  - 학습 → 평가 → Registry 등록 → (조건부) Production stage 승격
-- [ ] `infra/airflow/dags/inference_pipeline.py` — 추론 DAG
-  - Production 모델 로드 → 추론 → 결과 저장
-- [ ] `docs/MLFLOW_WORKFLOW.md` 본문 작성 (실제 동작 기준)
+- [x] `ml/train/train.py` — sklearn Iris + RandomForest (데모)
+  - MLflow Tracking 으로 metric/param/model 기록 ✅
+  - `registered_model_name` 으로 Registry 자동 등록 ✅
+- [x] `ml/inference/predict.py` — Production 모델 로드 + 배치 추론
+- [x] `ml/serve/README.md` — `mlflow models serve` 가이드 (별도 컨테이너는 미생성)
+- [x] `infra/airflow/dags/train_pipeline.py` — train → promote (acc ≥ 0.9 시 자동 승격)
+- [x] `infra/airflow/dags/inference_pipeline.py` — @hourly Production 모델로 추론
+- [x] `infra/airflow/requirements.txt` — scikit-learn 1.5.2 추가
+- [x] `infra/docker-compose.yml` — `../ml:/opt/dais/ml:ro` 마운트 추가 (3개 airflow 서비스)
+- [x] `docs/MLFLOW_WORKFLOW.md` 본문 작성
+
+**검증 절차** (사용자 환경에서):
+```bash
+make build && make up                   # airflow에 sklearn 추가됐으니 재빌드
+# 1) Airflow UI 에서 train_pipeline 활성화 + 수동 트리거
+# 2) MLflow UI: iris_rf 실험에 run 생성 + Models 에서 Production stage 확인
+# 3) MinIO Console: mlflow-artifacts 버킷에 모델 파일 확인
+# 4) inference_pipeline 활성화 + 트리거 → task log 에서 예측 결과 확인
+```
 
 **완료 기준**: Airflow에서 학습 DAG 트리거 → MLflow Registry에 모델 등록 → 추론 DAG가 그 모델을 가져다 사용.
 

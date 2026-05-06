@@ -30,11 +30,11 @@ make logs
 
 | 서비스 | URL | 비고 |
 |---|---|---|
-| MLflow UI | http://localhost:5000 | 모델 학습/등록 |
-| Airflow | http://localhost:8080 | 파이프라인 |
-| Grafana | http://localhost:3000 | 모니터링 |
-| Prometheus | http://localhost:9090 | 메트릭 수집 |
-| MinIO Console | http://localhost:9001 | Artifact Storage |
+| MLflow UI | http://203.250.72.36:5000 | 모델 학습/등록 |
+| Airflow | http://203.250.72.36:8080 | 파이프라인 |
+| Grafana | http://203.250.72.36:3000 | 모니터링 |
+| Prometheus | http://203.250.72.36:9090 | 메트릭 수집 |
+| MinIO Console | http://203.250.72.36:9001 | Artifact Storage |
 
 > **포트 전체 정리**: [docs/PORTS.md](docs/PORTS.md)
 

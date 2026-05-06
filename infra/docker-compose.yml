@@ -27,6 +27,8 @@ x-airflow-common: &airflow-common
   volumes:
     - ./airflow/dags:/opt/airflow/dags
     - airflow_logs:/opt/airflow/logs
+    # ml/ 폴더를 마운트해서 DAG 가 학습/추론 모듈을 import 할 수 있게 함
+    - ../ml:/opt/dais/ml:ro
   networks:
     - dais_network
 
@@ -137,18 +139,23 @@ services:
   airflow-init:
     <<: *airflow-common
     container_name: dais-airflow-init
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_ADMIN_USERNAME: ${AIRFLOW_ADMIN_USERNAME}
+      _AIRFLOW_ADMIN_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD}
+      _AIRFLOW_ADMIN_EMAIL: ${AIRFLOW_ADMIN_EMAIL}
     entrypoint: /bin/bash
     command:
       - -c
       - |
         airflow db migrate
         airflow users create \
-          --username admin \
-          --password admin \
+          --username "$${_AIRFLOW_ADMIN_USERNAME}" \
+          --password "$${_AIRFLOW_ADMIN_PASSWORD}" \
           --firstname admin \
           --lastname admin \
           --role Admin \
-          --email admin@dais.local || true
+          --email "$${_AIRFLOW_ADMIN_EMAIL}" || true
         echo '✅ airflow init done'
     depends_on:
       postgres:
