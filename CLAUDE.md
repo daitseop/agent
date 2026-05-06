@@ -167,31 +167,43 @@ dais_agent/
 
 ---
 
-### Phase 2: MLOps 인프라 구축
+### Phase 2: MLOps 인프라 구축 🟡 코드 작성 완료 / 사용자 환경 검증 필요
 
 **목표**: `make up` 한 번으로 모든 서비스가 뜨고, 각 UI 접속이 가능하다.
 
-- [ ] `infra/postgres/init/01-create-databases.sh` — mlflow_db, airflow_db 생성
-- [ ] `infra/minio/init.sh` — `mlflow-artifacts` 버킷 자동 생성 (mc 또는 init container)
-- [ ] `infra/mlflow/Dockerfile` — MLflow + psycopg2 + boto3
-- [ ] `infra/airflow/Dockerfile` — Airflow + 필요한 provider
-- [ ] `infra/prometheus/prometheus.yml` — scrape target 정의
-- [ ] `infra/grafana/provisioning/datasources/` — Prometheus 자동 등록
-- [ ] `infra/docker-compose.yml` 작성
-  - 단일 network: `dais_network`
-  - 서비스: postgres, minio, mlflow, airflow-webserver, airflow-scheduler, prometheus, grafana
-  - 모든 서비스에 `healthcheck` 정의
-  - `depends_on: condition: service_healthy` 사용
-- [ ] **볼륨/마운트 정의** (반드시 명시):
-  - `postgres_data` → `/var/lib/postgresql/data`
-  - `minio_data` → `/data`
-  - `mlflow_artifacts` → MinIO에 위임 (별도 볼륨 X)
-  - `./infra/airflow/dags` → `/opt/airflow/dags` (호스트 마운트)
-  - `airflow_logs` → `/opt/airflow/logs`
-  - `prometheus_data` → `/prometheus`
-  - `grafana_data` → `/var/lib/grafana`
-- [ ] `make up` 으로 전체 기동 확인
-- [ ] 접속 확인: MLflow(5000), Airflow(8080), Grafana(3000), MinIO Console(9001)
+- [x] `infra/postgres/init/01-create-databases.sh` — mlflow_db, airflow_db 생성
+- [x] MinIO 버킷 자동 생성 — compose 의 `minio-init` 서비스가 mc 로 생성 (별도 init.sh 불필요)
+- [x] `infra/mlflow/Dockerfile` — MLflow 2.18.0 + psycopg2-binary + boto3
+- [x] `infra/airflow/Dockerfile` — Airflow 2.10.3 + mlflow + boto3
+- [x] `infra/prometheus/prometheus.yml` — self-scrape (Phase 3 에서 target 확장)
+- [x] `infra/grafana/provisioning/datasources/prometheus.yml` — Prometheus 자동 등록
+- [x] `infra/grafana/provisioning/dashboards/dashboards.yml` — 대시보드 provider 등록
+- [x] `infra/docker-compose.yml` 작성
+  - 단일 network: `dais_network` ✅
+  - 서비스: postgres / minio / minio-init / mlflow / airflow-init / airflow-webserver / airflow-scheduler / prometheus / grafana ✅
+  - 모든 서비스에 `healthcheck` 정의 (init 컨테이너 제외) ✅
+  - `depends_on: condition: service_healthy / service_completed_successfully` 사용 ✅
+- [x] `infra/docker-compose.dev.yml` — Postgres 호스트 노출 등 dev 오버라이드
+- [x] **볼륨/마운트 정의** (compose 하단 주석 참고):
+  - `postgres_data` → `/var/lib/postgresql/data` ✅
+  - `minio_data` → `/data` ✅
+  - `mlflow_artifacts` → MinIO 위임 (별도 볼륨 없음) ✅
+  - `./infra/airflow/dags` → `/opt/airflow/dags` (호스트 마운트) ✅
+  - `airflow_logs` → `/opt/airflow/logs` ✅
+  - `prometheus_data` → `/prometheus` ✅
+  - `grafana_data` → `/var/lib/grafana` ✅
+- [ ] **(사용자 검증)** `make up` 으로 전체 기동 확인
+- [ ] **(사용자 검증)** 접속 확인: MLflow(5000), Airflow(8080), Grafana(3000), MinIO Console(9001)
+
+**검증 절차** (사용자 환경에서):
+```bash
+make init                    # .env 생성
+# .env 에서 비밀번호와 AIRFLOW__CORE__FERNET_KEY 채우기
+#   FERNET_KEY 생성: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+make up
+make ps                      # 모든 서비스 healthy 확인
+# 브라우저로 5000, 8080, 3000, 9001 접속
+```
 
 **완료 기준**: 모든 UI 접속 가능 + MLflow에서 더미 run 1개 기록 시 MinIO에 artifact 저장 확인.
 
