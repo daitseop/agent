@@ -1,6 +1,6 @@
 # dais_agent
 
-최소한의 MLOps 환경 위에서 동작하는 **독립 Agent 플랫폼**.
+최소한의 MLOps 환경 위에서 동작하는 **Agent 플랫폼**.
 MLflow / Airflow / Grafana / MinIO 인프라와 LangChain·LangGraph 기반 Agent를 함께 제공한다.
 
 > 프로젝트 전체 계획은 [CLAUDE.md](CLAUDE.md) 를 먼저 읽을 것. **Single source of truth**.
