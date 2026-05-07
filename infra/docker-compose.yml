@@ -6,6 +6,34 @@
 # - 모든 서비스에 healthcheck 정의
 # ============================================================
 
+x-agent-common-env: &agent-common-env
+  LLM_BASE_URL: ${LLM_BASE_URL}
+  LLM_API_KEY: ${LLM_API_KEY}
+  LLM_MODEL: ${LLM_MODEL}
+  LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2}
+  LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY}
+  LANGCHAIN_PROJECT: ${LANGCHAIN_PROJECT}
+  LANGCHAIN_ENDPOINT: ${LANGCHAIN_ENDPOINT}
+
+x-agent-common: &agent-common
+  build:
+    context: ..
+    dockerfile: infra/agent/Dockerfile
+  restart: unless-stopped
+  networks:
+    - dais_network
+
+x-agent-healthcheck: &agent-healthcheck
+  test:
+    - CMD
+    - python
+    - -c
+    - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"
+  interval: 30s
+  timeout: 5s
+  retries: 5
+  start_period: 30s
+
 x-airflow-common-env: &airflow-common-env
   AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
   AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
@@ -249,6 +277,41 @@ services:
     restart: unless-stopped
     networks:
       - dais_network
+
+  # ──────────────────────────────
+  # Agents (독립 실행, 통신 없음)
+  #   - 공용 이미지(infra/agent/Dockerfile) + AGENT_NAME 으로 분기
+  #   - /health, /llm-check 엔드포인트 (Phase 5)
+  # ──────────────────────────────
+  data-agent:
+    <<: *agent-common
+    container_name: dais-data-agent
+    environment:
+      <<: *agent-common-env
+      AGENT_NAME: data_agent
+    ports:
+      - "8001:8000"
+    healthcheck: *agent-healthcheck
+
+  infra-agent:
+    <<: *agent-common
+    container_name: dais-infra-agent
+    environment:
+      <<: *agent-common-env
+      AGENT_NAME: infra_agent
+    ports:
+      - "8002:8000"
+    healthcheck: *agent-healthcheck
+
+  correction-agent:
+    <<: *agent-common
+    container_name: dais-correction-agent
+    environment:
+      <<: *agent-common-env
+      AGENT_NAME: correction_agent
+    ports:
+      - "8003:8000"
+    healthcheck: *agent-healthcheck
 
 # ──────────────────────────────
 # Volumes (영속성)

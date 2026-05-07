@@ -238,25 +238,42 @@ make build && make up                   # airflow에 sklearn 추가됐으니 재
 
 ---
 
-### Phase 4: Agent 개발 환경 구축 (⚠️ Agent 로직 코드 작성 X)
+### Phase 4: Agent 개발 환경 구축 ✅ 완료 (2026-05-07 사용자 검증 완료, ⚠️ Agent 로직 코드 작성 X)
 
 **목표**: Agent 코드를 바로 작성할 수 있는 골격과 의존성, LLM 연결을 준비한다.
 **작성하지 않는 것**: 각 Agent의 LangGraph 노드/도구/프롬프트 로직.
 
-- [ ] `pyproject.toml` 작성 — 의존성:
-  - `langchain`, `langchain-openai`, `langgraph`, `langsmith`
-  - `fastapi`, `uvicorn`, `pydantic`, `python-dotenv`
-  - `httpx`, `tenacity`
-  - dev: `ruff`, `mypy`, `pytest`, `pytest-asyncio`
-- [ ] `agents/common/__init__.py`
-- [ ] `agents/common/llm_client.py` — **최소한만**:
-  - `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` 환경변수를 읽어 `ChatOpenAI` 인스턴스를 반환하는 factory 함수 1개
-  - 그 외 로직 X
-- [ ] `agents/common/tracing.py` — LangSmith 활성화 헬퍼 (env 기반)
-- [ ] 각 Agent 폴더에 빈 `graph.py`, `api.py`, `__init__.py` (placeholder만)
-- [ ] `tests/integration/test_llm_connectivity.py` — 8번 서버 LLM 호출이 성공하는지만 확인
-- [ ] `agents/common/prompts/`, `agents/common/tools/` 빈 디렉토리 (`.gitkeep`)
-- [ ] `docs/AGENTS.md` 본문 작성 — 각 Agent의 책임/trigger/입출력 스키마 (TBD 해소)
+- [x] `pyproject.toml` 작성 — hatchling 빌드, 11개 runtime + 4개 dev 의존성
+  - `langchain`, `langchain-openai`, `langgraph`, `langsmith` ✅
+  - `fastapi`, `uvicorn[standard]`, `pydantic`, `python-dotenv` ✅
+  - `httpx`, `tenacity` ✅
+  - dev: `ruff`, `mypy`, `pytest`, `pytest-asyncio` ✅
+- [x] `agents/__init__.py`, `agents/common/__init__.py` (factory 재노출)
+- [x] `agents/common/llm_client.py` — `get_llm()` factory + 환경변수 검증
+- [x] `agents/common/tracing.py` — `configure_tracing()` / `is_tracing_enabled()`
+- [x] 3개 Agent 폴더에 placeholder `graph.py`, `api.py`, `__init__.py`
+- [x] `tests/conftest.py` — 루트 `.env` 자동 로딩
+- [x] `tests/integration/test_llm_connectivity.py` — env 검사 + LLM invoke
+- [x] `agents/common/prompts/`, `agents/common/tools/` `.gitkeep` 유지
+- [x] `docs/AGENTS.md` 공통 사항 본문 보강 (각 Agent 입출력은 로직 구현 단계 TBD 유지)
+
+**검증 절차** (사용자 환경에서):
+```bash
+# (a) 의존성 설치 — uv 권장
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
+
+# 또는 pip
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+
+# (b) LLM 연결 테스트 (8번 서버)
+pytest tests/integration/test_llm_connectivity.py -v -s -m integration
+
+# (c) LangSmith 대시보드에서 'dais_agent' 프로젝트에 trace 1건 기록 확인
+```
 
 **완료 기준**:
 1. `uv sync` (또는 `pip install -e .`) 성공
@@ -265,13 +282,37 @@ make build && make up                   # airflow에 sklearn 추가됐으니 재
 
 ---
 
-## 6. 다음 단계 (이 계획서의 범위 밖)
+## 6. 다음 단계 (Phase 5 이후)
 
-Phase 4 완료 후 사용자가 직접 시작할 작업:
-- 각 Agent의 LangGraph 그래프 설계 및 노드 구현
-- Agent별 Tool (MLflow API 호출, DB 조회, Airflow 트리거 등) 작성
-- Agent별 FastAPI 엔드포인트 구현
-- Agent를 컨테이너화하여 `infra/docker-compose.yml`에 통합
+### Phase 5: Agent 배포 골격 🟡 코드 작성 완료 / 사용자 검증 필요 (⚠️ Agent 로직 코드 없음)
+
+**목표**: 로직 0줄로도 컨테이너 3개가 떠서 `/health`, `/llm-check` 가 응답. Phase 6에서 graph만 채우면 됨.
+
+- [x] `infra/agent/Dockerfile` — 공용 agent base 이미지 (AGENT_NAME 환경변수로 분기)
+- [x] `.dockerignore` — `.venv/`, `__pycache__/`, `.git/`, `.env` 등 제외
+- [x] `agents/common/logging.py` — JSON 구조화 로깅 (`setup_logging`)
+- [x] `agents/common/api_factory.py` — `create_app(agent_name)` factory (`/health`, `/llm-check`)
+- [x] `agents/common/__init__.py` — `create_app`, `setup_logging` 추가 노출
+- [x] 각 agent의 `graph.py` — `from langgraph.graph import StateGraph, START, END` + `AgentState(TypedDict)` placeholder
+- [x] 각 agent의 `api.py` — `app = create_app("xxx_agent")` 한 줄 + graph import
+- [x] `infra/docker-compose.yml` — data/infra/correction agent 3개 서비스 + agent-common anchor + agent-healthcheck anchor
+- [x] `docs/PORTS.md` 갱신 — 8001/8002/8003 상태 = "활성"
+
+**검증 절차** (사용자 환경에서):
+```bash
+make build && make up
+curl http://203.250.72.36:8001/health
+curl http://203.250.72.36:8002/health
+curl http://203.250.72.36:8003/health
+curl http://203.250.72.36:8001/llm-check    # ok=true 확인 + LangSmith trace 1건
+```
+
+**완료 기준**: 3개 agent 컨테이너 healthy + LLM-check 통과 + 컨테이너 내부에서도 LangSmith trace 기록.
+
+### Phase 6: Agent 로직 구현 (사용자 주도)
+- 각 Agent 의 LangGraph 그래프 / 노드 / 도구 / 프롬프트
+- Agent 별 입출력 스키마 확정 (`docs/AGENTS.md` TBD 해소)
+- 통합/단위 테스트
 
 ---
 

@@ -11,10 +11,20 @@
 |---|---|
 | 프레임워크 | LangChain + LangGraph |
 | LLM | 8번 서버 (`LLM_BASE_URL`) — OpenAI 호환 endpoint |
-| Tracing | LangSmith (`LANGCHAIN_*` 환경변수) |
-| LLM 클라이언트 | `agents/common/llm_client.py` factory 사용 (Phase 4 작성) |
+| Tracing | LangSmith (`LANGCHAIN_*` 환경변수, 자동 활성화) |
+| LLM 클라이언트 | `agents.common.get_llm()` factory (Phase 4 완료) |
+| Tracing 헬퍼 | `agents.common.configure_tracing()` |
 | API 프레임워크 | FastAPI |
 | 통신 | Agent 간 통신 없음. 각자 외부 trigger 로 동작 |
+
+### LLM 호출 예시
+
+```python
+from agents.common import get_llm
+
+llm = get_llm()             # .env 의 LLM_* 자동 사용
+resp = llm.invoke("hello")  # LangSmith 에 자동 trace 기록
+```
 
 ---
 

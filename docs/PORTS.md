@@ -14,10 +14,10 @@
 | MinIO API | 9000 | 9000 | O | 예약 | S3 호환 API |
 | MinIO Console | 9001 | 9001 | O | 예약 | MinIO Web UI |
 | PostgreSQL | 5432 | 5432 | △ | 예약 | dev only, prod 노출 X |
-| **Agent API Gateway** | 8000 | 8000 | O | 예약 | Agent 외부 진입점 |
-| Data Agent | 8001 | 8001 | X | 예약 | 내부 통신 |
-| Infra Agent | 8002 | 8002 | X | 예약 | 내부 통신 |
-| Correction Agent | 8003 | 8003 | X | 예약 | 내부 통신 |
+| **Agent API Gateway** | 8000 | 8000 | O | 예약 | Agent 외부 진입점 (Phase 5+ 검토) |
+| Data Agent | 8001 | 8000 | O | **활성** | /health, /llm-check (Phase 5) |
+| Infra Agent | 8002 | 8000 | O | **활성** | /health, /llm-check (Phase 5) |
+| Correction Agent | 8003 | 8000 | O | **활성** | /health, /llm-check (Phase 5) |
 
 ## 상태 표시 규칙
 - **예약**: 포트 번호만 잡아둠 (서비스 미구현)
